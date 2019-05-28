@@ -1,5 +1,5 @@
 /*
- * Ejemplo 6.2.4.
+ * Ejemplo 6.2.5.
  * Se busca simplificar la notacion de las gramaticas libres de contexto
  * Segun lo investigado, hay otra manera de expresar las gramaticas
  * Se implementa logica que permite utilizar los caminos como nombres
@@ -8,14 +8,11 @@
  * Cambios de optimizacion de codigo
  * Fuente: https://www.cs.us.es/cursos/ia2-2004/temas/tema-03.pdf
  * Fuente: https://personal.us.es/fsoler/papers/05capgram.pdf
-*/
+ * Esta version nueva se hace ya que la idea de cambiar minusculas ha
+ * generado varios problemas
+ */
 
 camino('Cartago', "San Jose", 15).
-
-% Auxiliar para obtener una oracion en minuscula
-% string_lower("WazeLog",X)
-minuscula([], _).
-minuscula([X|L1], [Y|L2]):- string_lower(X,Y), minuscula(L1, L2).
 
 % Analogo a: oracion(A, B) :- sintagma_nominal(A,C), sintagma_verbal(C,B).
 % Agregar caso: "Quiero ir a ..."
@@ -58,10 +55,10 @@ sinonimo(para, a).
 
 % Determinantes
 determinante(impersonal, singular) --> [mi].
-determinante(masculino, singular) --> [el]; [un]; [yo].
+determinante(masculino, singular) --> [el]; [un]; [yo]; [me].
 
 % Verbos
-verbo_transitivo(singular) --> [es]; [voy].
+verbo_transitivo(singular) --> [es]; [voy]; [dirijo]; [estoy].
 
 % Nombres
 % Se manejaran casos como "WazeLog" o "Wazelog" con string_lower("WazeLog",X).
