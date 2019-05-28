@@ -1,5 +1,5 @@
 /*
- * Ejemplo 6.2.5.
+ * Ejemplo 6.2.6.
  * Se busca simplificar la notacion de las gramaticas libres de contexto
  * Segun lo investigado, hay otra manera de expresar las gramaticas
  * Se implementa logica que permite utilizar los caminos como nombres
@@ -10,9 +10,16 @@
  * Fuente: https://personal.us.es/fsoler/papers/05capgram.pdf
  * Esta version nueva se hace ya que la idea de cambiar minusculas ha
  * generado varios problemas
+ * Se incluye la logica de interpretacion de oraciones
  */
 
-camino('Cartago', "San Jose", 15).
+camino --> [[cartago], [san,jose], 25];
+           [[alajuela], [heredia], 7];
+           [[san, jose], [alajuela], 15];
+           [[cartago], [tres,rios], 10].
+
+origen(S,_) :- camino([S|_],_).
+destino(S,_) :- camino([_,S|_],_).
 
 % Analogo a: oracion(A, B) :- sintagma_nominal(A,C), sintagma_verbal(C,B).
 % Agregar caso: "Quiero ir a ..."
@@ -35,43 +42,71 @@ sintagma_nominal(Genero, Numero) --> determinante(Genero, Numero), nombre(Genero
 % Caso 3: "no voy para Cartago"
 % Caso 4: "voy PARA Cartago"
 sintagma_verbal(Numero) --> modulizador;
-                            verbo_transitivo(Numero), sintagma_nominal(_Genero, _Numero2);
+                            enlace, sintagma_nominal(_Genero, _Numero2);
                             modulizador, verbo_transitivo(Numero), enlace, sintagma_nominal(_Genero, _Numero2);
                             verbo_transitivo(Numero), enlace, sintagma_nominal(_Genero, _Numero2).
 
+% Sinonimos para verbos transitivos
+sinonimo_verbo_transitivo(singular, ir) --> [quiero,ir].
+sinonimo_verbo_transitivo(singular, voy) --> [dirijo].
+sinonimo_verbo_transitivo(singular, estoy) --> [encuentro].
+
 % Sinonimos de nombres
-sinonimo(origen, "punto de partida").
+sinonimo_nombre(masculino, singular, origen) --> [punto,de,partida].
+sinonimo_nombre(masculino, singular, parada) --> [punto,intermedio]; [destino,intermedio].
 
 % Sinonimos de modulizadores
-sinonimo(si, sí).
-sinonimo(si, afirmativo).
-sinonimo(si, claro).
-sinonimo(si, "de acuerdo").
-sinonimo(si, "por supuesto").
-sinonimo(no, negativo).
+sinonimo_modulizador(si) --> [afirmativo]; [claro]; [de,acuerdo]; [por,supuesto].
+sinonimo_modulizador(no) --> [negativo].
 
 % Sinonimos de enlaces
-sinonimo(para, a).
+sinonimo_enlace(para) --> [a].
 
 % Determinantes
 determinante(impersonal, singular) --> [mi].
 determinante(masculino, singular) --> [el]; [un]; [yo]; [me].
 
 % Verbos
-verbo_transitivo(singular) --> [es]; [voy]; [dirijo]; [estoy].
+verbo_transitivo(GeneroSinonimo) --> sinonimo_verbo_transitivo(GeneroSinonimo, _).
+verbo_transitivo(singular) --> [es]; [voy]; [estoy]; [ir]; [se,ubica].
 
 % Nombres
-% Se manejaran casos como "WazeLog" o "Wazelog" con string_lower("WazeLog",X).
-nombre(masculino, singular) --> [origen]; [destino]; [parada]; [wazelog].
-nombre(masculino, singular, [S|_], _) :- sinonimo(origen, S).
-nombre(masculino, singular, [X|_], _) :- camino(X, _Lugar2, _Peso).
-nombre(masculino, singular, [Y|_], _) :- camino(_Lugar1, Y, _Peso).
+% Se manejaran casos con mayuscula desde Java.
+nombre(GeneroSinonimo, NumeroSinonimo) --> sinonimo_nombre(GeneroSinonimo, NumeroSinonimo, _).
+nombre(masculino, singular) --> [origen]; [destino].
+nombre(masculino, singular) --> origen; destino.
+nombre(femenino, singular) --> [parada].
 
+% Modulizadores
+modulizador --> sinonimo_modulizador(_).
 modulizador --> [si]; [no].
-modulizador([S|_], _) :- sinonimo(si, S).
 
+% Enlaces
+enlace --> sinonimo_enlace(_).
 enlace --> [para]; [en].
-enlace([S|_], _) :- sinonimo(para, S).
+
+
+/*
+main :- writeln("Origen?"),
+        busca_origen(Origen),
+        write(Origen),
+        write(" efectivamente es un origen.\n").
+
+
+busca_origen(Origen) :- repeat,
+                        read(Origen),
+                        (origen([Origen],_) -> !; writeln("Error, el origen no existe, intente de nuevo."), fail).
+*/
+
+ejemplo(SSV) --> sintagma_nominal2(SSN), sintagma_verbal2(SSN,SSV).
+sintagma_nominal2(SNP) --> nombre_propio(SNP).
+sintagma_verbal2(X,SA) --> verbo_cop, atributo(X,SA).
+atributo(X,SA) --> adjetivo(X,SA).
+verbo_cop --> [es].
+nombre_propio(juan) --> [juan].
+nombre_propio(pedro) --> [pedro].
+adjetivo(X,alto(X)) --> [alto].
+adjetivo(X,bajo(X)) --> [bajo].
 
 /*
  * - Origen: Hola WazeLog estoy en Cartago
