@@ -1,5 +1,5 @@
 /*
- * Ejemplo 6.2.6.
+ * Ejemplo 6.2.7.
  * Se busca simplificar la notacion de las gramaticas libres de contexto
  * Segun lo investigado, hay otra manera de expresar las gramaticas
  * Se implementa logica que permite utilizar los caminos como nombres
@@ -13,13 +13,15 @@
  * Se incluye la logica de interpretacion de oraciones
  */
 
-camino --> [[cartago], [san,jose], 25];
+camino --> [[cartago], [san-jose], 25];
            [[alajuela], [heredia], 7];
-           [[san, jose], [alajuela], 15];
-           [[cartago], [tres,rios], 10].
+           [[san-jose], [alajuela], 15];
+           [[cartago], [tres-rios], 10].
 
 origen(S,_) :- camino([S|_],_).
 destino(S,_) :- camino([_,S|_],_).
+
+lugar --> origen; destino.
 
 % Analogo a: oracion(A, B) :- sintagma_nominal(A,C), sintagma_verbal(C,B).
 % Agregar caso: "Quiero ir a ..."
@@ -65,16 +67,18 @@ sinonimo_enlace(para) --> [a].
 % Determinantes
 determinante(impersonal, singular) --> [mi].
 determinante(masculino, singular) --> [el]; [un]; [yo]; [me].
+determinante(femenino, singular) --> [una]; [la].
 
 % Verbos
 verbo_transitivo(GeneroSinonimo) --> sinonimo_verbo_transitivo(GeneroSinonimo, _).
-verbo_transitivo(singular) --> [es]; [voy]; [estoy]; [ir]; [se,ubica].
+verbo_transitivo(singular) --> [es]; [voy]; [estoy]; [ir]; [se,ubica]; [ubico].
 
 % Nombres
 % Se manejaran casos con mayuscula desde Java.
 nombre(GeneroSinonimo, NumeroSinonimo) --> sinonimo_nombre(GeneroSinonimo, NumeroSinonimo, _).
-nombre(masculino, singular) --> [origen]; [destino].
-nombre(masculino, singular) --> origen; destino.
+nombre(masculino, singular) --> [origen].
+nombre(masculino, singular) --> [destino].
+nombre(masculino, singular) --> lugar.
 nombre(femenino, singular) --> [parada].
 
 % Modulizadores
@@ -85,28 +89,67 @@ modulizador --> [si]; [no].
 enlace --> sinonimo_enlace(_).
 enlace --> [para]; [en].
 
+% palabra --> lugar; determinante(_, _); verbo_transitivo(_); nombre(_,
+% _); modulizador; enlace.
 
+% Palabras clave, significado
+palabra_clave([origen], origen).
+palabra_clave([destino], destino).
+palabra_clave([parada], parada).
+palabra_clave([a], destino).
+palabra_clave([voy], destino).
+palabra_clave([estoy], origen).
+palabra_clave([ir], destino).
+palabra_clave([ubico], origen).
+palabra_clave([si], afirmacion).
+palabra_clave([no], negacion).
+palabra_clave([para], destino).
+palabra_clave(Lugar, lugar_origen) :- origen(Lugar, []).
+palabra_clave(Lugar, lugar_destino) :- destino(Lugar, []).
+palabra_clave(Lugar, lugar_parada) :- origen(Lugar, []), destino(Lugar, []).
+%faltan sinonimos!!!!!!!!
+
+gramatica_valida(origen) --> [origen], [lugar_origen];
+                             [lugar_origen], [origen].
+gramatica_valida(destino) --> [destino], [lugar_destino];
+                              [lugar_destino], [destino].
+gramatica_valida(parada) --> [parada], [lugar_parada];
+                             [lugar_parada], [parada].
+gramatica_valida(confirmacion) --> [afirmacion];
+                                   [negacion].
 /*
-main :- writeln("Origen?"),
-        busca_origen(Origen),
-        write(Origen),
-        write(" efectivamente es un origen.\n").
-
-
-busca_origen(Origen) :- repeat,
-                        read(Origen),
-                        (origen([Origen],_) -> !; writeln("Error, el origen no existe, intente de nuevo."), fail).
+extraer_palabras_clave(L, LE) :- extraer_palabras_clave(L, [], LE).
+extraer_palabras_clave([], LE, LE).
+extraer_palabras_clave([X,Y|L1], L2, L3) :- (palabra([X], _) -> (palabra_clave([X], _) -> extraer_palabras_clave([Y|L1], [X|L2], L3); extraer_palabras_clave([Y|L1], L2, L3)); extraer_palabras_clave([[X,Y]], L2, L3)).
 */
 
-ejemplo(SSV) --> sintagma_nominal2(SSN), sintagma_verbal2(SSN,SSV).
-sintagma_nominal2(SNP) --> nombre_propio(SNP).
-sintagma_verbal2(X,SA) --> verbo_cop, atributo(X,SA).
-atributo(X,SA) --> adjetivo(X,SA).
-verbo_cop --> [es].
-nombre_propio(juan) --> [juan].
-nombre_propio(pedro) --> [pedro].
-adjetivo(X,alto(X)) --> [alto].
-adjetivo(X,bajo(X)) --> [bajo].
+categorizar_palabras_clave(L, LC) :- categorizar_palabras_clave(L, [], LC).
+categorizar_palabras_clave([], LC, LC).
+categorizar_palabras_clave([X|L1], L2, L3) :- (palabra_clave([X], T) -> categorizar_palabras_clave(L1, [T|L2], L3); categorizar_palabras_clave(L1, L2, L3)).
+
+gramatica_palabras_clave(L, G, []) :- categorizar_palabras_clave(L, L1), sort(L1, G).
+
+concatenar([], L, L).
+concatenar([X|L1], L2, [X|L3]) :- concatenar(L1, L2, L3).
+
+autollenar(origen, Oracion, Resultado) :- concatenar([estoy, en], Oracion, Resultado).
+
+main :- writeln("Origen?"),
+        validar(origen),
+        write(" efectivamente es un origen.\n").
+
+preguntar(origen) :- writeln("Cual es el origen del viaje?\n").
+
+validar(Objetivo) :- repeat,
+                     read(Oracion),
+                     (phrase(oracion, Oracion) ->
+                           autollenar(Objetivo, Oracion, Autollenado),
+                           (phrase(gramatica_palabras_clave(Oracion), Gramatica1), phrase(gramatica_palabras_clave(Autollenado), Gramatica2)),
+                           ((phrase(gramatica_valida(Objetivo), Gramatica1); phrase(gramatica_valida(Objetivo), Gramatica2)) ->
+                                true;
+                                write("Comprendo lo que dices pero no puedo responderte con esa informacion. "), preguntar(Objetivo), fail);
+                           writeln("No te entiendo. "), preguntar(Objetivo), fail).
+
 
 /*
  * - Origen: Hola WazeLog estoy en Cartago
